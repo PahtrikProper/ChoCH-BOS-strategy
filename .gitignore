@@ -1,0 +1,27 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+.env/
+
+# Editor settings
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data and artifacts
+/data/*
+!data/.gitkeep
+
+# Logs and reports
+*.log
+*.csv
+*.tsv
+*.xlsx
+*.pdf
