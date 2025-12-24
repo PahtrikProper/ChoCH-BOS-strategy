@@ -25,6 +25,8 @@ The ChoCH/BOS trading workflow is organized under `src/choch_bos_strategy/` with
   - `MainEngine` orchestrates optimization, persists `data/best_params.json`, and queues reruns in `data/optimization_queue.json`.
   - `LiveTradingEngine` streams Bybit klines, applies ChoCH/BOS signals, and routes entries/exits via `BuyOrderEngine` and `SellOrderEngine`.
   - `paths.py` centralizes repository/data paths to keep artifacts in `data/`.
+  - `live.py` configures **isolated margin (tradeMode=1) with 10x leverage** via the Bybit v5 `set-leverage` endpoint for linear contracts; adjust `trade_mode`/`leverage` in that module if needed (see Bybit docs: Position – Set Leverage).
+  - **Mainnet only:** `live.py` enforces `https://api.bybit.com` (mainnet) and aborts if DRY_RUN/testnet endpoints are provided.
 
 ## Getting started
 1. Create a Python virtual environment (e.g., `python -m venv .venv`) and activate it.
@@ -50,5 +52,7 @@ The ChoCH/BOS trading workflow is organized under `src/choch_bos_strategy/` with
    - Best params: `data/best_params.json`
    - Optimization queue: `data/optimization_queue.json`
 4. Live trading uses Bybit klines; provide the desired symbol/category via `TraderConfig` (defaults to `BTCUSDT` spot).
+5. Margin mode and leverage: `src/choch_bos_strategy/live.py` requests **isolated 10x** (`trade_mode=1`, `leverage=10`) using `/v5/position/set-leverage`; ensure your account supports the requested mode before running.
+6. Safety: the live loop is **mainnet-only** and will exit if pointed at testnet or if `DRY_RUN=true`.
 
 For a conceptual overview of the ChoCH/BOS logic and workflow, see `notes/strategy_overview.md`.

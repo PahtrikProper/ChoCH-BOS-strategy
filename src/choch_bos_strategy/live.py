@@ -262,6 +262,8 @@ class BybitClient:
             "qty": str(qty),
             "triggerPrice": str(trigger_price),
             "triggerBy": "MarkPrice",
+            "triggerDirection": trigger_direction_for_stop(side),
+            "orderFilter": "StopOrder",
             "timeInForce": "ImmediateOrCancel",
             "reduceOnly": True,
             "closeOnTrigger": True,
@@ -287,7 +289,6 @@ class BybitClient:
             "qty": str(qty),
             "timeInForce": "ImmediateOrCancel",
             "reduceOnly": True,
-            "closeOnTrigger": True,
         }
         if position_idx:
             payload["positionIdx"] = position_idx
@@ -429,6 +430,15 @@ def minimum_history_days_for_indicators(agg_minutes: int) -> int:
     )
     minutes_needed = bars_needed * agg_minutes
     return max(1, math.ceil(minutes_needed / (60 * 24)))
+
+
+def trigger_direction_for_stop(side: str) -> int:
+    """Return Bybit triggerDirection per side for stop orders.
+
+    triggerDirection=1 fires when lastPrice/markPrice rises to or above triggerPrice,
+    triggerDirection=2 fires when it falls to or below triggerPrice.
+    """
+    return 2 if side.lower() == "sell" else 1
 
 
 def get_current_price(client: BybitClient, category: str, symbol: str, fallback: float) -> float:

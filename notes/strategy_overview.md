@@ -5,6 +5,8 @@
 - **Backtesting and optimization:** `MainEngine` invokes `BacktestEngine.grid_search_with_progress` across swing lookback, BOS lookback, and Fibonacci pullback bands (`fib_low`, `fib_high`). The top long configuration is saved to `data/best_params.json`.
 - **Queueing future runs:** `OptimizationQueue` appends each optimization summary to `data/optimization_queue.json`, targeting a 2‑day cadence for reruns.
 - **Live trading loop:** The entry point (`python -m choch_bos_strategy` or `python -m choch_bos_strategy.start`) reuses optimized parameters, streams fresh klines, and manages trade lifecycle via `LiveTradingEngine` with `BuyOrderEngine`/`SellOrderEngine`.
+- **Margin/leverage:** `live.py` sets Bybit **isolated mode (tradeMode=1) with 10x leverage** using `/v5/position/set-leverage`. Adjust `trade_mode`/`leverage` in that file if your account requires different settings.
+- **Mainnet only:** `live.py` enforces `https://api.bybit.com` and aborts if DRY_RUN/testnet is supplied.
 
 ## Strategy logic (long bias)
 1. Build 15m swing highs/lows from aggregated data.
