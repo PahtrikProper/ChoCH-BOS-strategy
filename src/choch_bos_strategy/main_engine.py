@@ -9,7 +9,7 @@ from typing import Dict, Optional
 import numpy as np
 import pandas as pd
 
-from .backtest_engine import BacktestEngine, summarize_long_results
+from .backtest_engine import BacktestEngine, StrategyParams, summarize_long_results
 from .buy_order_engine import BuyOrderEngine
 from .config import TraderConfig
 from .data_client import DataClient
@@ -311,6 +311,24 @@ class MainEngine:
         self.save_best_params(best_long.iloc[0], long_results)
         elapsed_seconds = time.monotonic() - start_time
         self.queue_best_params(best_long.iloc[0], long_results, elapsed_seconds)
+
+        # Re-run best params once to capture trade-by-trade details for reporting
+        best_series = best_long.iloc[0]
+        best_params = StrategyParams(
+            int(best_series["swing_lookback"]),
+            int(best_series["bos_lookback"]),
+            float(best_series["fib_low"]),
+            float(best_series["fib_high"]),
+            "long",
+        )
+        _, trades_df = self.backtest_engine.run_backtest_with_trades(df, best_params)
+        if not trades_df.empty:
+            cols = ["entry_time", "exit_time", "entry_price", "exit_price", "pnl_value", "pnl_pct", "qty"]
+            print("\n==== TRADES (LONG, BEST PARAMS) ====")
+            print(trades_df[cols].to_string(index=False))
+            print("====================================\n")
+        else:
+            print("\nNo trades recorded for best parameters.\n")
 
         return best_long, dfres_long, long_results
 

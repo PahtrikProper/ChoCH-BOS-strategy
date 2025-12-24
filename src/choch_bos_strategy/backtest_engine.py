@@ -35,9 +35,32 @@ class BacktestMetrics:
     losses: int
 
 
+def summarize_long_results(best_long: pd.DataFrame, starting_balance: float) -> Dict[str, float]:
+    l = best_long.iloc[0]
+    total_trades = int(l["wins"] + l["losses"])
+    total_wins = int(l["wins"])
+    total_losses = int(l["losses"])
+    total_pnl = float(l["pnl_value"])
+    combined_final_balance = float(l["final_balance"])
+    win_rate = (total_wins / total_trades) * 100 if total_trades > 0 else 0
+    avg_win = float(l["avg_win"])
+    avg_loss = float(l["avg_loss"])
+    return {
+        "Total Trades": total_trades,
+        "Wins": total_wins,
+        "Losses": total_losses,
+        "Win Rate %": round(win_rate, 2),
+        "Total PnL": round(total_pnl, 2),
+        "Final Balance": round(combined_final_balance, 2),
+        "Average Win": round(avg_win, 2),
+        "Average Loss": round(avg_loss, 2),
+    }
+
+
 class BacktestEngine:
     def __init__(self, config: TraderConfig):
         self.config = config
+        self._last_trades: List[Dict] = []
         self._placeholder_short_row = {
             "swing_lookback": self.config.swing_lookback,
             "bos_lookback": self.config.bos_lookback,
@@ -57,7 +80,7 @@ class BacktestEngine:
             "losses": 0,
         }
 
-    def _run_backtest(self, df: pd.DataFrame, params: StrategyParams) -> BacktestMetrics:
+    def _run_backtest(self, df: pd.DataFrame, params: StrategyParams, capture_trades: bool = False) -> BacktestMetrics:
         data = df.copy().sort_index()
 
         # Build higher timeframe (15m) swings
@@ -93,6 +116,7 @@ class BacktestEngine:
         equity_curve: List[float] = []
         position = 0
         entry_price = None
+        entry_time = None
         liq_price = None
         qty = 0.0
         wins = 0
@@ -100,6 +124,7 @@ class BacktestEngine:
         win_sizes: List[float] = []
         loss_sizes: List[float] = []
         in_liquidation = False
+        trades: List[Dict] = [] if capture_trades else []
 
         warmup = max(params.swing_lookback * 15, params.bos_lookback * 2)
         for i in range(warmup, len(data)):
@@ -114,6 +139,7 @@ class BacktestEngine:
 
             if entry_cond and not in_liquidation:
                 entry_price = close
+                entry_time = row.name
                 trade_value = balance * self.config.leverage
                 qty = trade_value / entry_price
                 entry_fee = bybit_fee_fn(trade_value, self.config)
@@ -122,11 +148,26 @@ class BacktestEngine:
                 position = 1
 
             if position == 1 and liq_price and low <= liq_price:
+                if capture_trades and entry_price is not None and entry_time is not None:
+                    net_pnl = -self.config.starting_balance
+                    trades.append(
+                        {
+                            "entry_time": entry_time,
+                            "exit_time": row.name,
+                            "side": "LONG",
+                            "entry_price": entry_price,
+                            "exit_price": liq_price,
+                            "pnl_value": net_pnl,
+                            "pnl_pct": (net_pnl / self.config.starting_balance) * 100,
+                            "qty": qty,
+                        }
+                    )
                 balance = 0
                 losses += 1
                 loss_sizes.append(-100)
                 position = 0
                 entry_price = None
+                entry_time = None
                 qty = 0
                 in_liquidation = True
                 equity_curve.append(0)
@@ -155,8 +196,22 @@ class BacktestEngine:
                 else:
                     losses += 1
                     loss_sizes.append((net_pnl / self.config.starting_balance) * 100)
+                if capture_trades and entry_price is not None and entry_time is not None:
+                    trades.append(
+                        {
+                            "entry_time": entry_time,
+                            "exit_time": row.name,
+                            "side": "LONG",
+                            "entry_price": entry_price,
+                            "exit_price": exit_price,
+                            "pnl_value": net_pnl,
+                            "pnl_pct": (net_pnl / self.config.starting_balance) * 100,
+                            "qty": qty,
+                        }
+                    )
                 position = 0
                 entry_price = None
+                entry_time = None
                 qty = 0
 
             if position == 1 and entry_price is not None:
@@ -182,7 +237,17 @@ class BacktestEngine:
         returns = pd.Series(equity_curve).pct_change().dropna()
         sharpe = (returns.mean() / returns.std()) * np.sqrt(365 * 24 * 60 / self.config.agg_minutes) if returns.std() != 0 else 0
 
+        if capture_trades:
+            self._last_trades = trades
+        else:
+            self._last_trades = []
+
         return BacktestMetrics(pnl_pct, pnl_value, final_balance, avg_win, avg_loss, win_rate, rr_ratio, sharpe, 0, wins, losses)
+
+    def run_backtest_with_trades(self, df: pd.DataFrame, params: StrategyParams) -> tuple[BacktestMetrics, pd.DataFrame]:
+        metrics = self._run_backtest(df, params, capture_trades=True)
+        trades_df = pd.DataFrame(self._last_trades) if hasattr(self, "_last_trades") else pd.DataFrame()
+        return metrics, trades_df
 
     def grid_search(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         results_long: List[Dict] = []
