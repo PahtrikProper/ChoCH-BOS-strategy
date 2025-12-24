@@ -657,6 +657,7 @@ def run_live_trading() -> None:
 
     pending_entry: Optional[Dict[str, str | float]] = None
     long_cooldown_until: Optional[pd.Timestamp] = None
+    last_long_signal_ts: Optional[pd.Timestamp] = None
     history_days = max(backtest_days, minimum_history_days_for_indicators(agg_minutes))
 
     while True:
@@ -674,8 +675,8 @@ def run_live_trading() -> None:
                         "Open position detected while waiting on a pending entry; "
                         "clearing pending entry to manage the live position."
                     )
-    pending_entry = None
-    last_long_signal_ts = None
+                    pending_entry = None
+                    last_long_signal_ts = None
                 else:
                     print(
                         f"Polling for entry fill: id={pending_entry['order_id']} side={pending_entry['side']} "
