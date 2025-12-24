@@ -233,7 +233,7 @@ class BacktestEngine:
         return pd.DataFrame(results_long), pd.DataFrame(results_short)
 
 
-def combine_best_rows(best_long: pd.DataFrame, starting_balance: float) -> Dict[str, float]:
+def summarize_long_results(best_long: pd.DataFrame, starting_balance: float) -> Dict[str, float]:
     l = best_long.iloc[0]
     total_trades = int(l["wins"] + l["losses"])
     total_wins = int(l["wins"])

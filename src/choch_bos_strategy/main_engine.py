@@ -9,7 +9,7 @@ from typing import Dict, Optional
 import numpy as np
 import pandas as pd
 
-from .backtest_engine import BacktestEngine, combine_best_rows
+from .backtest_engine import BacktestEngine, summarize_long_results
 from .buy_order_engine import BuyOrderEngine
 from .config import TraderConfig
 from .data_client import DataClient
@@ -20,11 +20,11 @@ from .paths import DATA_DIR
 
 
 class LiveTradingEngine:
-    def __init__(self, config: TraderConfig, long_params: pd.Series, short_params: pd.Series, combined: Dict[str, float]):
+    def __init__(self, config: TraderConfig, long_params: pd.Series, short_params: pd.Series, long_results: Dict[str, float]):
         self.config = config
         self.long_params = long_params
         self.short_params = pd.Series(dtype=float)
-        self.combined = combined
+        self.long_results = long_results
         self.data_client = DataClient(config)
         self.buy_engine = BuyOrderEngine(config)
         self.sell_engine = SellOrderEngine(config)
@@ -172,7 +172,7 @@ class LiveTradingEngine:
                 row = data.iloc[-1]
                 nowstr = time.strftime("%Y-%m-%d %H:%M", time.gmtime())
 
-                if self.combined["Total PnL"] <= 0:
+                if self.long_results["Total PnL"] <= 0:
                     print(f"{nowstr} | NO EDGE detected by optimizer – standing aside.")
                     time.sleep(60 * self.config.agg_minutes)
                     continue
@@ -248,7 +248,7 @@ class MainEngine:
                 normalized[key] = value
         return normalized
 
-    def save_best_params(self, best_long: pd.Series, combined: Dict[str, float]) -> None:
+    def save_best_params(self, best_long: pd.Series, long_results: Dict[str, float]) -> None:
         payload = {
             "generated_at": datetime.utcnow().isoformat() + "Z",
             "symbol": self.config.symbol,
@@ -261,12 +261,12 @@ class MainEngine:
             "max_fill_latency": self.config.max_fill_latency,
             "long_params": self._normalize_row(best_long),
             "short_params": {},
-            "combined": combined,
+            "long_results": long_results,
         }
         self.best_params_path.write_text(json.dumps(payload, indent=2))
         print(f"Saved optimal parameters to {self.best_params_path.resolve()}")
 
-    def queue_best_params(self, best_long: pd.Series, combined: Dict[str, float], elapsed_seconds: float) -> Dict:
+    def queue_best_params(self, best_long: pd.Series, long_results: Dict[str, float], elapsed_seconds: float) -> Dict:
         queued_at = datetime.utcnow()
         ready_at = queued_at + timedelta(days=2)
         payload = {
@@ -277,7 +277,7 @@ class MainEngine:
             "starting_balance": self.config.starting_balance,
             "long_params": self._normalize_row(best_long),
             "short_params": {},
-            "combined": combined,
+            "long_results": long_results,
         }
         queued_item = self.optimization_queue.enqueue(
             queued_at=queued_at,
@@ -299,24 +299,24 @@ class MainEngine:
 
         dfres_long, dfres_short = self.backtest_engine.grid_search_with_progress(df)
         best_long = dfres_long.sort_values("pnl_pct", ascending=False).head(1).drop(columns=["drawdown"])
-        combined = combine_best_rows(best_long, self.config.starting_balance)
+        long_results = summarize_long_results(best_long, self.config.starting_balance)
 
         print(f"\n==================== BEST LONG PARAMETERS ({self.config.agg_minutes}m) ====================")
         print(best_long.to_string(index=False))
         print("\n============== BEST RESULTS (LONG ONLY) ==============")
-        for k, v in combined.items():
+        for k, v in long_results.items():
             print(f"{k}: {v}")
         print("==================================================================\n")
 
-        self.save_best_params(best_long.iloc[0], combined)
+        self.save_best_params(best_long.iloc[0], long_results)
         elapsed_seconds = time.monotonic() - start_time
-        self.queue_best_params(best_long.iloc[0], combined, elapsed_seconds)
+        self.queue_best_params(best_long.iloc[0], long_results, elapsed_seconds)
 
-        return best_long, dfres_long, combined
+        return best_long, dfres_long, long_results
 
     def run(self):
         self.log_config()
-        best_long, _, combined = self.run_backtests()
+        best_long, _, long_results = self.run_backtests()
 
         from .live import run_live_trading
 
@@ -339,7 +339,7 @@ class MainEngine:
         while True:
             choice = prompt_menu()
             if choice == "1":
-                best_long, _, combined = self.run_backtests()
+                best_long, _, long_results = self.run_backtests()
                 continue
             if choice == "2":
                 if confirm_live_warning():
