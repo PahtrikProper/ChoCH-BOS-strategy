@@ -17,6 +17,8 @@ Thumbs.db
 
 # Data and artifacts
 /data/*
+!/data/best_params.json
+!/data/optimization_queue.json
 !data/.gitkeep
 
 # Logs and reports
