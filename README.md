@@ -57,4 +57,7 @@ The ChoCH/BOS trading workflow is organized under `src/choch_bos_strategy/` with
 6. Safety: the live loop is **mainnet-only** and will exit if pointed at testnet or if `DRY_RUN=true`.
 7. Live-trade consent: when prompted, type `YES` to accept the risk disclaimer (unproven strategy; losses possible; crypto trading is gambling) or return to the menu to stay in backtest mode.
 
+## Credits
+- Strategy inspiration and workflow steps were shared by a community member on Reddit: [Forexstrategy thread (comment)](https://www.reddit.com/r/Forexstrategy/comments/1oh8ukp/comment/nvnwobr/?context=3). Thanks for outlining the ChoCH/BOS process and fib zone guidance.
+
 For a conceptual overview of the ChoCH/BOS logic and workflow, see `notes/strategy_overview.md`.
