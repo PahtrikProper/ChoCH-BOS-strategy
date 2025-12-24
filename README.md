@@ -8,6 +8,12 @@ A minimal repository scaffold for developing a Change of Character (ChoCH) and B
 - `notes/` – research notes, hypotheses, and observations.
 - `data/` – local datasets such as price history or indicator exports (ignored from version control, except for the placeholder file).
 
+## Strategy package
+The ChoCH/BOS trading workflow from `ChoCH-BOS-strategy.zip` is now organized under `src/choch_bos_strategy/` with an executable module entrypoint:
+
+- Run the full optimize → live loop via `python -m choch_bos_strategy` or `python -m choch_bos_strategy.start`.
+- Generated artifacts (`best_params.json`, `optimization_queue.json`) are written to the `data/` directory by default.
+
 ## Getting started
 1. Create a Python virtual environment (e.g., `python -m venv .venv`) and activate it.
 2. Install dependencies once they are defined (for example, via `pip install -r requirements.txt`).
