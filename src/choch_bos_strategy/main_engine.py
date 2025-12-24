@@ -317,11 +317,40 @@ class MainEngine:
     def run(self):
         self.log_config()
         best_long, _, combined = self.run_backtests()
-        # After backtest, switch to real Bybit trading using the optimized params
-        # Imported lazily to avoid circular dependencies during backtest imports
+
         from .live import run_live_trading
 
-        run_live_trading()
+        def prompt_menu() -> str:
+            print("\nWhat would you like to do next?")
+            print("1) Run backtest again")
+            print("2) Trade live with leverage")
+            print("3) Exit")
+            return input("Enter choice (1/2/3): ").strip()
+
+        def confirm_live_warning() -> bool:
+            print(
+                "\n⚠️  WARNING: You are about to start live trading with leverage.\n"
+                "This strategy and code are unproven, and trading crypto with leverage can result in total loss.\n"
+                "The code creator and strategy creator are NOT responsible for any losses. Trading crypto is gambling.\n"
+                "Type 'YES' to accept and continue, or anything else to return to the menu."
+            )
+            return input("Continue? ").strip().upper() == "YES"
+
+        while True:
+            choice = prompt_menu()
+            if choice == "1":
+                best_long, _, combined = self.run_backtests()
+                continue
+            if choice == "2":
+                if confirm_live_warning():
+                    run_live_trading()
+                else:
+                    print("Live trading declined. Returning to menu.")
+                continue
+            if choice == "3":
+                print("Exiting. Goodbye.")
+                break
+            print("Invalid choice. Please enter 1, 2, or 3.")
 
 
 def run():
