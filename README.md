@@ -3,10 +3,20 @@
 A minimal repository scaffold for developing a Change of Character (ChoCH) and Break of Structure (BOS) trading strategy. Use this project to research entry/exit rules, design experiments, and track backtesting results.
 
 ## Repository layout
-- `src/` – strategy code, utilities, and orchestrators.
+- `src/` – strategy code, utilities, and orchestrators (see `src/choch_bos_strategy/` for the active ChoCH/BOS implementation).
 - `tests/` – automated checks for strategy logic and helpers.
-- `notes/` – research notes, hypotheses, and observations.
-- `data/` – local datasets such as price history or indicator exports (ignored from version control, except for the placeholder file).
+- `notes/` – research notes, hypotheses, and observations (e.g., `notes/strategy_overview.md`).
+- `data/` – generated artifacts such as optimizer outputs (`best_params.json`, `optimization_queue.json`) plus local datasets.
+
+## Strategy package
+The ChoCH/BOS trading workflow is organized under `src/choch_bos_strategy/` with an executable module entrypoint:
+
+- Optimize then launch live loop: `python -m choch_bos_strategy` or `python -m choch_bos_strategy.start`.
+- Core components:
+  - `BacktestEngine` runs grid searches over swing/BOS lookbacks and Fibonacci pullback bands.
+  - `MainEngine` orchestrates optimization, persists `data/best_params.json`, and queues reruns in `data/optimization_queue.json`.
+  - `LiveTradingEngine` streams Bybit klines, applies ChoCH/BOS signals, and routes entries/exits via `BuyOrderEngine` and `SellOrderEngine`.
+  - `paths.py` centralizes repository/data paths to keep artifacts in `data/`.
 
 ## Getting started
 1. Create a Python virtual environment (e.g., `python -m venv .venv`) and activate it.
@@ -15,7 +25,7 @@ A minimal repository scaffold for developing a Change of Character (ChoCH) and B
 4. Run your test suite (e.g., `pytest`) to validate any changes.
 
 ## Next steps
-- Define the initial ChoCH/BOS rule set and success metrics.
-- Add data loaders for your preferred broker or CSV exports.
-- Implement backtests and performance reporting utilities.
-- Automate notebook- or script-based experiments and capture results in `notes/`.
+- Tune parameters (`swing_lookback`, `bos_lookback`, `fib_low`, `fib_high`) in `TraderConfig` to guide optimization.
+- Extend data loaders if you need alternate feeds or caching.
+- Add tests around entry/exit conditions and order simulation utilities.
+- Capture experiment outcomes and hypotheses in `notes/` (see `notes/strategy_overview.md` for the current strategy outline).
