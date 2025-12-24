@@ -7,6 +7,7 @@
 - **Live trading loop:** The entry point (`python -m choch_bos_strategy` or `python -m choch_bos_strategy.start`) reuses optimized parameters, streams fresh klines, and manages trade lifecycle via `LiveTradingEngine` with `BuyOrderEngine`/`SellOrderEngine`.
 - **Margin/leverage:** `live.py` sets Bybit **isolated mode (tradeMode=1) with 10x leverage** using `/v5/position/set-leverage`. Adjust `trade_mode`/`leverage` in that file if your account requires different settings.
 - **Mainnet only:** `live.py` enforces `https://api.bybit.com` and aborts if DRY_RUN/testnet is supplied.
+- **Post-backtest menu:** After optimization, the CLI offers a menu (re-run backtests, start live trading, or exit). Live trading requires typing `YES` after a risk disclaimer stating the strategy/code are unproven and that crypto trading is gambling and can lead to loss.
 
 ## Strategy logic (long bias)
 1. Build 15m swing highs/lows from aggregated data.
