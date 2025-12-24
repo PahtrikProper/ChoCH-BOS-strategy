@@ -62,7 +62,7 @@ class BacktestEngine:
 
         # Build higher timeframe (15m) swings
         ht = (
-            data.resample("15T")
+            data.resample("15min")
             .agg({"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"})
             .dropna()
         )
