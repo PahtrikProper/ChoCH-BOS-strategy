@@ -30,6 +30,10 @@ api_keys.json      Optional. JSON file with the same keys as above; env vars win
 - Apply those tuned ``stoch_params`` below.
 - Run this script only on Bybit mainnet; testnet and paper trading are blocked.
 """
+raise SystemExit(
+    "Live trading is disabled in choch_bos_strategy_btc. "
+    "Use the main engine to run the paper-trading loop instead."
+)
 from __future__ import annotations
 
 import hashlib
@@ -699,6 +703,13 @@ def run_live_trading() -> None:
                     time.sleep(agg_minutes * 60)
                     continue
 
+            try:
+                df = fetch_bybit_bars(symbol, category, interval_minutes=agg_minutes, days=history_days)
+            except Exception as exc:  # noqa: PIE786
+                print(f"Data fetch failed: {exc}")
+                time.sleep(agg_minutes * 60)
+                continue
+
             bars_needed = (
                 stoch_params["rsi_length"]
                 + stoch_params["stoch_length"]
@@ -707,22 +718,10 @@ def run_live_trading() -> None:
                 + stoch_params["min_up_candles"]
                 + 5
             )
-            required_days = max(
-                history_days,
-                math.ceil(bars_needed * agg_minutes / (60 * 24)) + 1,
-            )
-
-            try:
-                df = fetch_bybit_bars(symbol, category, interval_minutes=agg_minutes, days=required_days)
-            except Exception as exc:  # noqa: PIE786
-                print(f"Data fetch failed: {exc}")
-                time.sleep(agg_minutes * 60)
-                continue
-
             if len(df) < bars_needed:
-                raise RuntimeError(
-                    f"Insufficient bars fetched for indicators ({len(df)}/{bars_needed}) even after requesting {required_days} days."
-                )
+                print(f"Waiting for enough bars ({len(df)}/{bars_needed})...")
+                time.sleep(60)
+                continue
 
             signal = calculate_signal(df)
             last_close = signal["last_close"]
