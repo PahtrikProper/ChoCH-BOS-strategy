@@ -3,7 +3,9 @@
 A minimal repository scaffold for developing a Change of Character (ChoCH) and Break of Structure (BOS) trading strategy. Use this project to research entry/exit rules, design experiments, and track backtesting results.
 
 ## Repository layout
-- `src/` – strategy code, utilities, and orchestrators (see `src/choch_bos_strategy/` for the active ChoCH/BOS implementation).
+- `src/` – strategy code, utilities, and orchestrators.
+  - `src/choch_bos_strategy/` – **live-trading workflow** for Bybit (optimizer + live loop).
+  - `src/choch_bos_strategy_paper_trader/` – **paper-trading workflow** with simulated fills, spreads, slippage, and fees (no live orders).
 - `tests/` – automated checks for strategy logic and helpers.
 - `notes/` – research notes, hypotheses, and observations (e.g., `notes/strategy_overview.md`).
 - `data/` – generated artifacts such as optimizer outputs (`best_params.json`, `optimization_queue.json`) plus local datasets.
@@ -64,6 +66,17 @@ If you want to run the ChoCH/BOS loop without touching a live account, use the d
 5. Margin mode and leverage: `src/choch_bos_strategy/live.py` requests **isolated 10x** (`trade_mode=1`, `leverage=10`) using `/v5/position/set-leverage`; ensure your account supports the requested mode before running.
 6. Safety: the live loop is **mainnet-only** and will exit if pointed at testnet or if `DRY_RUN=true`.
 7. Live-trade consent: when prompted, type `YES` to accept the risk disclaimer (unproven strategy; losses possible; crypto trading is gambling) or return to the menu to stay in backtest mode.
+
+### Paper trading (simulated)
+Run the optimizer and launch a fully simulated trading loop (no API keys needed):
+```bash
+python -m choch_bos_strategy_paper_trader
+# or explicitly
+python -m choch_bos_strategy_paper_trader.start
+```
+- Uses the same ChoCH/BOS logic as the live package but with a **400 USDT** starting balance, simulated spread/slippage, Bybit-like fees, random order rejections, and latency.
+- Writes artifacts to the same `data/` directory (`best_params.json`, `optimization_queue.json`).
+- The `live.py` inside this package intentionally exits to prevent real orders; only the simulated engine runs.
 
 ## Credits
 - Strategy inspiration and workflow steps were shared by a community member on Reddit: [Forexstrategy thread (comment)](https://www.reddit.com/r/Forexstrategy/comments/1oh8ukp/comment/nvnwobr/?context=3). Thanks for outlining the ChoCH/BOS process and fib zone guidance.
