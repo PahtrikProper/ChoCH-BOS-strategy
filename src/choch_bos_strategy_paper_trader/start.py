@@ -25,7 +25,7 @@ except ImportError:
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if repo_root not in sys.path:
         sys.path.append(repo_root)
-    from choch_bos_strategy.main_engine import run  # type: ignore
+    from choch_bos_strategy_paper_trader.main_engine import run  # type: ignore
 
 
 if __name__ == "__main__":
