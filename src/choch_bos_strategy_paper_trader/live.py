@@ -30,6 +30,10 @@ api_keys.json      Optional. JSON file with the same keys as above; env vars win
 - Apply those tuned ``stoch_params`` below.
 - Run this script only on Bybit mainnet; testnet and paper trading are blocked.
 """
+raise SystemExit(
+    "Live trading is disabled in choch_bos_strategy_paper_trader. "
+    "Use the main engine to run the paper-trading loop instead."
+)
 from __future__ import annotations
 
 import hashlib

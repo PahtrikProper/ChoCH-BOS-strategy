@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-# Package location: /workspace/.../src/choch_bos_strategy
+# Package location: /workspace/.../src/choch_bos_strategy_live_trader
 PACKAGE_ROOT = Path(__file__).resolve().parent
 # Repository root lives one level above the src directory.
 REPO_ROOT = PACKAGE_ROOT.parents[1]
