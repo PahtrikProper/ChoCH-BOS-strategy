@@ -29,6 +29,14 @@ The ChoCH/BOS trading workflow is organized under `src/choch_bos_strategy/` with
   - `live.py` configures **isolated margin (tradeMode=1) with 10x leverage** via the Bybit v5 `set-leverage` endpoint for linear contracts; adjust `trade_mode`/`leverage` in that module if needed (see Bybit docs: Position – Set Leverage).
   - **Mainnet only:** `live.py` enforces `https://api.bybit.com` (mainnet) and aborts if DRY_RUN/testnet endpoints are provided.
 
+### Paper-trading package (simulated fills)
+If you want to run the ChoCH/BOS loop without touching a live account, use the dedicated paper-trading variant located at `src/choch_bos_strategy_paper_trader/`:
+
+- Entry point: `python -m choch_bos_strategy_paper_trader` or `python -m choch_bos_strategy_paper_trader.start`.
+- Behavior: runs the optimizer, saves `data/best_params.json`, then immediately launches a paper-trading loop that simulates spread, slippage, Bybit taker/maker fees, order rejections, and fill latency—no live API keys required.
+- Defaults: 400 USDT starting balance, 10x leverage, and the same ChoCH/BOS signal generation as the live package.
+- Safety: the bundled `live.py` in this package intentionally exits to prevent real order placement; only the simulated engine is available.
+
 ## Getting started
 1. Create a Python virtual environment (e.g., `python -m venv .venv`) and activate it.
 2. Install dependencies once they are defined (for example, via `pip install -r requirements.txt`).
