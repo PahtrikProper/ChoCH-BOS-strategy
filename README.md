@@ -4,24 +4,31 @@ A minimal repository scaffold for developing a Change of Character (ChoCH) and B
 
 ## Repository layout
 - `src/` – strategy code, utilities, and orchestrators.
-  - `src/choch_bos_strategy/` – **live-trading workflow** for Bybit (optimizer + live loop).
-  - `src/choch_bos_strategy_paper_trader/` – **paper-trading workflow** with simulated fills, spreads, slippage, and fees (no live orders).
+  - `src/choch_bos_strategy_btc_live/` – **live-trading workflow for BTC** on Bybit (optimizer + live loop).
+  - `src/choch_bos_strategy_sol_live/` – **live-trading workflow for SOL** on Bybit.
+  - `src/choch_bos_strategy_btc_paper_trader/` – **BTC paper-trading workflow** with simulated fills, spreads, slippage, and fees (no live orders).
+  - `src/choch_bos_strategy_sol_paper_trader/` – **SOL paper-trading workflow** (simulated).
 - `tests/` – automated checks for strategy logic and helpers.
 - `notes/` – research notes, hypotheses, and observations (e.g., `notes/strategy_overview.md`).
 - `data/` – generated artifacts such as optimizer outputs (`best_params.json`, `optimization_queue.json`) plus local datasets.
 
 ```
 .
-├── src/choch_bos_strategy/        # Optimizer, live loop, Bybit client utilities
+├── src/choch_bos_strategy_btc_live/        # Optimizer, live loop, Bybit client utilities (BTC)
+├── src/choch_bos_strategy_sol_live/        # Optimizer, live loop, Bybit client utilities (SOL)
+├── src/choch_bos_strategy_btc_paper_trader/ # BTC paper-trading optimizer + simulator
+├── src/choch_bos_strategy_sol_paper_trader/ # SOL paper-trading optimizer + simulator
 ├── data/                          # Runtime artifacts written by the optimizer/live loop
 ├── notes/                         # Strategy notes and references
 └── tests/                         # Space for automated checks
 ```
 
-## Strategy package
-The ChoCH/BOS trading workflow is organized under `src/choch_bos_strategy/` with an executable module entrypoint:
+## Live strategy packages
+The ChoCH/BOS live trading workflows are organized under `src/choch_bos_strategy_btc_live/` and `src/choch_bos_strategy_sol_live/` with executable module entrypoints:
 
-- Optimize then launch live loop: `python -m choch_bos_strategy` or `python -m choch_bos_strategy.start`.
+- Optimize then launch live loop:
+  - BTC: `python -m choch_bos_strategy_btc_live` or `python -m choch_bos_strategy_btc_live.start`.
+  - SOL: `python -m choch_bos_strategy_sol_live` or `python -m choch_bos_strategy_sol_live.start`.
 - Core components:
   - `BacktestEngine` runs grid searches over swing/BOS lookbacks and Fibonacci pullback bands.
   - `MainEngine` orchestrates optimization, persists `data/best_params.json`, and queues reruns in `data/optimization_queue.json`.
@@ -31,13 +38,14 @@ The ChoCH/BOS trading workflow is organized under `src/choch_bos_strategy/` with
   - `live.py` configures **isolated margin (tradeMode=1) with 10x leverage** via the Bybit v5 `set-leverage` endpoint for linear contracts; adjust `trade_mode`/`leverage` in that module if needed (see Bybit docs: Position – Set Leverage).
   - **Mainnet only:** `live.py` enforces `https://api.bybit.com` (mainnet) and aborts if DRY_RUN/testnet endpoints are provided.
 
-### Paper-trading package (simulated fills)
-If you want to run the ChoCH/BOS loop without touching a live account, use the dedicated paper-trading variant located at `src/choch_bos_strategy_paper_trader/`:
+### Paper-trading packages (simulated fills)
+If you want to run the ChoCH/BOS loop without touching a live account, use the dedicated paper-trading variants:
 
-- Entry point: `python -m choch_bos_strategy_paper_trader` or `python -m choch_bos_strategy_paper_trader.start`.
+- BTC: `python -m choch_bos_strategy_btc_paper_trader` or `python -m choch_bos_strategy_btc_paper_trader.start`.
+- SOL: `python -m choch_bos_strategy_sol_paper_trader` or `python -m choch_bos_strategy_sol_paper_trader.start`.
 - Behavior: runs the optimizer, saves `data/best_params.json`, then immediately launches a paper-trading loop that simulates spread, slippage, Bybit taker/maker fees, order rejections, and fill latency—no live API keys required.
-- Defaults: 400 USDT starting balance, 10x leverage, and the same ChoCH/BOS signal generation as the live package.
-- Safety: the bundled `live.py` in this package intentionally exits to prevent real order placement; only the simulated engine is available.
+- Defaults: 400 USDT starting balance, 10x leverage, and the same ChoCH/BOS signal generation as the live packages.
+- Safety: the bundled `live.py` in these packages intentionally exit to prevent real order placement; only the simulated engines are available.
 
 ## Getting started
 1. Create a Python virtual environment (e.g., `python -m venv .venv`) and activate it.
@@ -55,9 +63,14 @@ If you want to run the ChoCH/BOS loop without touching a live account, use the d
 1. Ensure dependencies are installed (minimum: `pandas`, `numpy`, `requests`, `tqdm`).
 2. From the repo root, run the optimizer + live loop:
    ```bash
-   python -m choch_bos_strategy
+   # BTC live
+   python -m choch_bos_strategy_btc_live
    # or explicitly
-   python -m choch_bos_strategy.start
+   python -m choch_bos_strategy_btc_live.start
+
+   # SOL live
+   python -m choch_bos_strategy_sol_live
+   python -m choch_bos_strategy_sol_live.start
    ```
 3. Artifacts:
    - Best params: `data/best_params.json`
@@ -70,13 +83,17 @@ If you want to run the ChoCH/BOS loop without touching a live account, use the d
 ### Paper trading (simulated)
 Run the optimizer and launch a fully simulated trading loop (no API keys needed):
 ```bash
-python -m choch_bos_strategy_paper_trader
-# or explicitly
-python -m choch_bos_strategy_paper_trader.start
+# BTC paper trader
+python -m choch_bos_strategy_btc_paper_trader
+python -m choch_bos_strategy_btc_paper_trader.start
+
+# SOL paper trader
+python -m choch_bos_strategy_sol_paper_trader
+python -m choch_bos_strategy_sol_paper_trader.start
 ```
-- Uses the same ChoCH/BOS logic as the live package but with a **400 USDT** starting balance, simulated spread/slippage, Bybit-like fees, random order rejections, and latency.
+- Uses the same ChoCH/BOS logic as the live packages but with a **400 USDT** starting balance, simulated spread/slippage, Bybit-like fees, random order rejections, and latency.
 - Writes artifacts to the same `data/` directory (`best_params.json`, `optimization_queue.json`).
-- The `live.py` inside this package intentionally exits to prevent real orders; only the simulated engine runs.
+- The `live.py` inside these packages intentionally exit to prevent real orders; only the simulated engine runs.
 
 ## Credits
 - Strategy inspiration and workflow steps were shared by a community member on Reddit: [Forexstrategy thread (comment)](https://www.reddit.com/r/Forexstrategy/comments/1oh8ukp/comment/nvnwobr/?context=3). Thanks for outlining the ChoCH/BOS process and fib zone guidance.
