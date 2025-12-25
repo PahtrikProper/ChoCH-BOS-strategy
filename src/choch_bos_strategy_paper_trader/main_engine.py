@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -33,8 +34,8 @@ class LiveTradingEngine:
         self.equity = config.starting_balance
         self._last_long_signal_ts: Optional[pd.Timestamp] = None
 
-    def _prepare_live_dataframe(self) -> pd.DataFrame:
-        df = self.data_client.fetch_bybit_bars(days=self.config.live_history_days, interval_minutes=self.config.agg_minutes)
+    def _prepare_live_dataframe(self, days: int) -> pd.DataFrame:
+        df = self.data_client.fetch_bybit_bars(days=days, interval_minutes=self.config.agg_minutes)
         swing_lookback = int(self.long_params.get("swing_lookback", self.config.swing_lookback))
         bos_lookback = int(self.long_params.get("bos_lookback", self.config.bos_lookback))
         fib_low = float(self.long_params.get("fib_low", self.config.fib_low))
@@ -156,7 +157,6 @@ class LiveTradingEngine:
 
         while True:
             try:
-                data = self._prepare_live_dataframe()
                 min_required = (
                     max(
                         int(self.long_params.get("swing_lookback", self.config.swing_lookback)) * 15,
@@ -164,10 +164,15 @@ class LiveTradingEngine:
                     )
                     + self.config.min_history_padding
                 )
+                required_days = max(
+                    self.config.live_history_days,
+                    math.ceil(min_required * self.config.agg_minutes / (60 * 24)) + 1,
+                )
+                data = self._prepare_live_dataframe(days=required_days)
                 if len(data) < min_required:
-                    print("Waiting for enough bars...")
-                    time.sleep(2)
-                    continue
+                    raise RuntimeError(
+                        f"Insufficient history fetched ({len(data)} bars) even after requesting {required_days} days."
+                    )
 
                 row = data.iloc[-1]
                 nowstr = time.strftime("%Y-%m-%d %H:%M", time.gmtime())

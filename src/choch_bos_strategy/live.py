@@ -699,13 +699,6 @@ def run_live_trading() -> None:
                     time.sleep(agg_minutes * 60)
                     continue
 
-            try:
-                df = fetch_bybit_bars(symbol, category, interval_minutes=agg_minutes, days=history_days)
-            except Exception as exc:  # noqa: PIE786
-                print(f"Data fetch failed: {exc}")
-                time.sleep(agg_minutes * 60)
-                continue
-
             bars_needed = (
                 stoch_params["rsi_length"]
                 + stoch_params["stoch_length"]
@@ -714,10 +707,22 @@ def run_live_trading() -> None:
                 + stoch_params["min_up_candles"]
                 + 5
             )
-            if len(df) < bars_needed:
-                print(f"Waiting for enough bars ({len(df)}/{bars_needed})...")
-                time.sleep(60)
+            required_days = max(
+                history_days,
+                math.ceil(bars_needed * agg_minutes / (60 * 24)) + 1,
+            )
+
+            try:
+                df = fetch_bybit_bars(symbol, category, interval_minutes=agg_minutes, days=required_days)
+            except Exception as exc:  # noqa: PIE786
+                print(f"Data fetch failed: {exc}")
+                time.sleep(agg_minutes * 60)
                 continue
+
+            if len(df) < bars_needed:
+                raise RuntimeError(
+                    f"Insufficient bars fetched for indicators ({len(df)}/{bars_needed}) even after requesting {required_days} days."
+                )
 
             signal = calculate_signal(df)
             last_close = signal["last_close"]
