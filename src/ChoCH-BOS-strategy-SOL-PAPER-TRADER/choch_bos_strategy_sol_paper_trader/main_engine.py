@@ -35,18 +35,15 @@ class LiveTradingEngine:
         self._last_long_signal_ts: Optional[pd.Timestamp] = None
 
     def _prepare_live_dataframe(self, days: int) -> pd.DataFrame:
-        df = self.data_client.fetch_bybit_bars(days=days, interval_minutes=self.config.agg_minutes)
+        df_1m = self.data_client.fetch_bybit_bars(days=days, interval_minutes=self.config.agg_minutes)
+        df_5m = self.data_client.fetch_bybit_bars(days=days, interval_minutes=5)
         swing_lookback = int(self.long_params.get("swing_lookback", self.config.swing_lookback))
         bos_lookback = int(self.long_params.get("bos_lookback", self.config.bos_lookback))
         fib_low = float(self.long_params.get("fib_low", self.config.fib_low))
         fib_high = float(self.long_params.get("fib_high", self.config.fib_high))
 
-        data = df.copy().sort_index()
-        ht = (
-            data.resample("15min")
-            .agg({"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"})
-            .dropna()
-        )
+        data = df_1m.copy().sort_index()
+        ht = df_5m.copy().sort_index()
         ht["swing_high"] = ht["High"].rolling(swing_lookback).max()
         ht["swing_low"] = ht["Low"].rolling(swing_lookback).min()
         ht_sw_high = ht["swing_high"].reindex(data.index, method="ffill")
@@ -148,7 +145,7 @@ class LiveTradingEngine:
 
     def run(self):
         print(
-            "\n--- Live 15m swing → fib 60-70% + 1m ChoCH/BOS trader "
+            "\n--- Live 5m swing → fib 60-70% + 1m ChoCH/BOS trader "
             f"HT swing_lb={self.long_params.get('swing_lookback', self.config.swing_lookback)}, "
             f"1m bos_lb={self.long_params.get('bos_lookback', self.config.bos_lookback)}, "
             f"fib={self.long_params.get('fib_low', self.config.fib_low):.2f}-{self.long_params.get('fib_high', self.config.fib_high):.2f} | "
@@ -159,7 +156,7 @@ class LiveTradingEngine:
             try:
                 min_required = (
                     max(
-                        int(self.long_params.get("swing_lookback", self.config.swing_lookback)) * 15,
+                        int(self.long_params.get("swing_lookback", self.config.swing_lookback)) * 5,
                         int(self.long_params.get("bos_lookback", self.config.bos_lookback)) * 2,
                     )
                     + self.config.min_history_padding
@@ -297,12 +294,13 @@ class MainEngine:
     def run_backtests(self) -> tuple[pd.DataFrame, pd.DataFrame, Dict[str, float]]:
         print(f"Fetching data and running optimizer on {self.config.agg_minutes}m bars...")
         start_time = time.monotonic()
-        df = self.data_client.fetch_bybit_bars(interval_minutes=self.config.agg_minutes, days=self.config.backtest_days)
-        required_bars = max(self.config.swing_lookback_range) * 15 + max(self.config.bos_lookback_range) * 2 + self.config.min_history_padding
-        if len(df) < required_bars:
-            raise ValueError(f"Not enough candles fetched for optimizer warmup: need {required_bars}, got {len(df)}")
+        df_1m = self.data_client.fetch_bybit_bars(interval_minutes=self.config.agg_minutes, days=self.config.backtest_days)
+        df_5m = self.data_client.fetch_bybit_bars(interval_minutes=5, days=self.config.backtest_days)
+        required_bars = max(self.config.swing_lookback_range) * 5 + max(self.config.bos_lookback_range) * 2 + self.config.min_history_padding
+        if len(df_1m) < required_bars:
+            raise ValueError(f"Not enough candles fetched for optimizer warmup: need {required_bars}, got {len(df_1m)}")
 
-        dfres_long, dfres_short = self.backtest_engine.grid_search_with_progress(df)
+        dfres_long, dfres_short = self.backtest_engine.grid_search_with_progress(df_1m, df_5m)
         best_long = dfres_long.sort_values("pnl_pct", ascending=False).head(1).drop(columns=["drawdown"])
         long_results = summarize_long_results(best_long, self.config.starting_balance)
 
@@ -326,7 +324,7 @@ class MainEngine:
             float(best_series["fib_high"]),
             "long",
         )
-        _, trades_df = self.backtest_engine.run_backtest_with_trades(df, best_params)
+        _, trades_df = self.backtest_engine.run_backtest_with_trades(df_1m, best_params, df_5m)
         if not trades_df.empty:
             cols = ["entry_time", "exit_time", "entry_price", "exit_price", "pnl_value", "pnl_pct", "qty"]
             print("\n==== TRADES (LONG, BEST PARAMS) ====")
