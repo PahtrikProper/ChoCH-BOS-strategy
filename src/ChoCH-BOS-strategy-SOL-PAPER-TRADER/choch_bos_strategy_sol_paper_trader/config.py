@@ -24,7 +24,7 @@ class TraderConfig:
     max_fill_latency: float = 0.5  # seconds
     risk_fraction: float = 0.95  # portion of available USDT to deploy per entry
 
-    swing_lookback: int = 20  # count of 15m bars to define swing high/low
+    swing_lookback: int = 20  # count of 5m bars to define swing high/low
     bos_lookback: int = 5  # 1m bars to confirm BOS/ChoCH
     fib_low: float = 0.6
     fib_high: float = 0.7
@@ -47,5 +47,5 @@ class TraderConfig:
             f"Order reject probability: {self.order_reject_prob * 100:.2f}%\n"
             f"Max simulated latency: {self.max_fill_latency}s\n"
             f"Risk per entry: {self.risk_fraction * 100:.1f}% of available USDT\n"
-            "Strategy: 15m swing high/low → fib 60-70% pullback into 1m demand; require 1m ChoCH + BOS before entering on the demand that triggered the ChoCH"
+            "Strategy: 5m swing high/low → fib 60-70% pullback into 1m demand; require 1m ChoCH + BOS before entering on the demand that triggered the ChoCH"
         )

@@ -42,7 +42,7 @@ class LiveTradingEngine:
 
         data = df.copy().sort_index()
         ht = (
-            data.resample("15T")
+            data.resample("5T")
             .agg({"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"})
             .dropna()
         )
@@ -147,7 +147,7 @@ class LiveTradingEngine:
 
     def run(self):
         print(
-            "\n--- Live 15m swing → fib 60-70% + 1m ChoCH/BOS trader "
+            "\n--- Live 5m swing → fib 60-70% + 1m ChoCH/BOS trader "
             f"HT swing_lb={self.long_params.get('swing_lookback', self.config.swing_lookback)}, "
             f"1m bos_lb={self.long_params.get('bos_lookback', self.config.bos_lookback)}, "
             f"fib={self.long_params.get('fib_low', self.config.fib_low):.2f}-{self.long_params.get('fib_high', self.config.fib_high):.2f} | "
@@ -159,7 +159,7 @@ class LiveTradingEngine:
                 data = self._prepare_live_dataframe()
                 min_required = (
                     max(
-                        int(self.long_params.get("swing_lookback", self.config.swing_lookback)) * 15,
+                        int(self.long_params.get("swing_lookback", self.config.swing_lookback)) * 5,
                         int(self.long_params.get("bos_lookback", self.config.bos_lookback)) * 2,
                     )
                     + self.config.min_history_padding
@@ -293,7 +293,7 @@ class MainEngine:
         print(f"Fetching data and running optimizer on {self.config.agg_minutes}m bars...")
         start_time = time.monotonic()
         df = self.data_client.fetch_bybit_bars(interval_minutes=self.config.agg_minutes, days=self.config.backtest_days)
-        required_bars = max(self.config.swing_lookback_range) * 15 + max(self.config.bos_lookback_range) * 2 + self.config.min_history_padding
+        required_bars = max(self.config.swing_lookback_range) * 5 + max(self.config.bos_lookback_range) * 2 + self.config.min_history_padding
         if len(df) < required_bars:
             raise ValueError(f"Not enough candles fetched for optimizer warmup: need {required_bars}, got {len(df)}")
 

@@ -83,9 +83,9 @@ class BacktestEngine:
     def _run_backtest(self, df: pd.DataFrame, params: StrategyParams, capture_trades: bool = False) -> BacktestMetrics:
         data = df.copy().sort_index()
 
-        # Build higher timeframe (15m) swings
+        # Build higher timeframe (5m) swings
         ht = (
-            data.resample("15min")
+            data.resample("5min")
             .agg({"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"})
             .dropna()
         )
@@ -126,7 +126,7 @@ class BacktestEngine:
         in_liquidation = False
         trades: List[Dict] = [] if capture_trades else []
 
-        warmup = max(params.swing_lookback * 15, params.bos_lookback * 2)
+        warmup = max(params.swing_lookback * 5, params.bos_lookback * 2)
         for i in range(warmup, len(data)):
             if balance <= 0:
                 equity_curve.append(0)
