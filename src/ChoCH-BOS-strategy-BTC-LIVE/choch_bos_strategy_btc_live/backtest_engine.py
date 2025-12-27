@@ -80,15 +80,18 @@ class BacktestEngine:
             "losses": 0,
         }
 
-    def _run_backtest(self, df: pd.DataFrame, params: StrategyParams, capture_trades: bool = False) -> BacktestMetrics:
-        data = df.copy().sort_index()
+    def _run_backtest(
+        self,
+        df_1m: pd.DataFrame,
+        params: StrategyParams,
+        capture_trades: bool = False,
+        df_5m: pd.DataFrame | None = None,
+    ) -> BacktestMetrics:
+        if df_5m is None:
+            raise ValueError("5m dataframe is required; do not resample 1m data.")
+        data = df_1m.copy().sort_index()
+        ht = df_5m.copy().sort_index()
 
-        # Build higher timeframe (5m) swings
-        ht = (
-            data.resample("5min")
-            .agg({"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"})
-            .dropna()
-        )
         ht["swing_high"] = ht["High"].rolling(params.swing_lookback).max()
         ht["swing_low"] = ht["Low"].rolling(params.swing_lookback).min()
         ht_sw_high = ht["swing_high"].reindex(data.index, method="ffill")
@@ -244,12 +247,14 @@ class BacktestEngine:
 
         return BacktestMetrics(pnl_pct, pnl_value, final_balance, avg_win, avg_loss, win_rate, rr_ratio, sharpe, 0, wins, losses)
 
-    def run_backtest_with_trades(self, df: pd.DataFrame, params: StrategyParams) -> tuple[BacktestMetrics, pd.DataFrame]:
-        metrics = self._run_backtest(df, params, capture_trades=True)
+    def run_backtest_with_trades(
+        self, df_1m: pd.DataFrame, params: StrategyParams, df_5m: pd.DataFrame
+    ) -> tuple[BacktestMetrics, pd.DataFrame]:
+        metrics = self._run_backtest(df_1m, params, capture_trades=True, df_5m=df_5m)
         trades_df = pd.DataFrame(self._last_trades) if hasattr(self, "_last_trades") else pd.DataFrame()
         return metrics, trades_df
 
-    def grid_search(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def grid_search(self, df_1m: pd.DataFrame, df_5m: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         results_long: List[Dict] = []
         results_short: List[Dict] = []
 
@@ -258,7 +263,7 @@ class BacktestEngine:
                 for fib_low in self.config.fib_low_range:
                     for fib_high in self.config.fib_high_range:
                         params_long = StrategyParams(int(swing_lb), int(bos_lb), float(fib_low), float(fib_high), "long")
-                        metrics_long = self._run_backtest(df, params_long)
+                        metrics_long = self._run_backtest(df_1m, params_long, df_5m=df_5m)
                         results_long.append({**params_long.__dict__, **metrics_long.__dict__})
         if not results_short:
             results_short.append(self._placeholder_short_row.copy())
@@ -267,7 +272,7 @@ class BacktestEngine:
         df_short = pd.DataFrame(results_short)
         return df_long, df_short
 
-    def grid_search_with_progress(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def grid_search_with_progress(self, df_1m: pd.DataFrame, df_5m: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         results_long: List[Dict] = []
         results_short: List[Dict] = []
         total = (
@@ -290,7 +295,7 @@ class BacktestEngine:
             ncols=80,
         ):
             params_long = StrategyParams(int(swing_lb), int(bos_lb), float(fib_low), float(fib_high), "long")
-            metrics_long = self._run_backtest(df, params_long)
+            metrics_long = self._run_backtest(df_1m, params_long, df_5m=df_5m)
             results_long.append({**params_long.__dict__, **metrics_long.__dict__})
         if not results_short:
             results_short.append(self._placeholder_short_row.copy())
